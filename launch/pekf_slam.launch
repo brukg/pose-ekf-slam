@@ -1,0 +1,9 @@
+<launch>
+
+<node pkg="pekf_slam" type="pekf_slam" name="pekf_slam" output="screen" >
+  <rosparam command="load" file="$(find pekf_slam)/config/config.yaml" />
+
+</node>
+
+</launch>
+

@@ -1,0 +1,33 @@
+<package format="3">
+    <name>pekf_slam</name>
+    <version>1.0.0</version>
+    <description>
+        pose slam
+    </description>
+    <author>Wim Meeussen</author>
+    <maintainer email="user@todo.todo">maintainer</maintainer>
+    <license>BSD</license>
+    <url>#</url>
+
+    <buildtool_depend version_gte="0.5.68">catkin</buildtool_depend>
+
+    <build_depend>message_generation</build_depend>
+    <build_depend>roscpp</build_depend>
+    <build_depend>std_msgs</build_depend>
+    <build_depend>geometry_msgs</build_depend>
+    <build_depend>sensor_msgs</build_depend>
+    <build_depend>nav_msgs</build_depend>
+    <build_depend>tf</build_depend>
+    <build_depend>message_generation</build_depend>
+
+    <exec_depend>message_runtime</exec_depend>
+    <exec_depend>roscpp</exec_depend>
+    <exec_depend>std_msgs</exec_depend>
+    <exec_depend>geometry_msgs</exec_depend>
+    <exec_depend>sensor_msgs</exec_depend>
+    <exec_depend>nav_msgs</exec_depend>
+    <exec_depend>tf</exec_depend>
+
+    <test_depend>rosbag</test_depend>
+    <test_depend>rostest</test_depend>
+</package>
