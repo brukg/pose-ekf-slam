@@ -73,14 +73,14 @@ void PEKFSLAM::decomposeTransform(const Eigen::Matrix4f& trans,
       pose_to_check =X.block<2,1>(i*3, 0);
       dis = pose_to_check - cur_pose;
       if (dis.norm() < 1.5){
-        registerPointCloud(last_cloud, scans_vector[i], t, fitness);
+        registerPointCloud(scans_vector[i], last_cloud,  t, fitness);
         if (fitness < 0.005){
           ROS_INFO("pose_to_check %f %f", pose_to_check(0), pose_to_check(1));
           ROS_INFO("dis %f", dis.norm());
           ROS_INFO("fitness %f", fitness);
           Hp.push_back(i);
           trans.push_back(t);
-          fitnesses.push_back(fitness);
+          fitnesses.push_back(pow(fitness, 2)); // used for R matrix
         }
       }
     }

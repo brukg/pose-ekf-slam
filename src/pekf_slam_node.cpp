@@ -98,7 +98,7 @@ namespace pekfslam
     double roll, pitch, yaw;
     rot_1.getRPY(roll, pitch, yaw); //get the RPY angles from the quaternion
     new_meas << msg->pose.pose.position.x, msg->pose.pose.position.y, yaw; // set odom measurement
-    odom_cov.diagonal() << msg->pose.covariance[0], msg->pose.covariance[7],  msg->pose.covariance[35]; // set odom covariance
+    odom_cov.diagonal() << 5*msg->pose.covariance[0], 5*msg->pose.covariance[7],  2*msg->pose.covariance[35]; // set odom covariance
     if (!new_odom_){
       odom_meas = new_meas - odom_prev_pose;
 

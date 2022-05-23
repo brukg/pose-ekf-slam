@@ -78,7 +78,7 @@ namespace pekfslam
   } 
 
   void PEKFSLAM::expected_hx(Eigen::VectorXd &xs, Eigen::VectorXd &xk, Eigen::VectorXd &hx){
-    hx = xs - xk; hx(2) = wrapAngle(hx(2));
+    hx = xk - xs; hx(2) = wrapAngle(hx(2));
 
   }
   void PEKFSLAM::observationMatrix(const pclXYZPtr& target, const pclXYZPtr& source, Eigen::Matrix4d &transform){
@@ -234,7 +234,7 @@ namespace pekfslam
       ROS_INFO("hx %f, %ld, %ld", hx.sum(), hx.rows(), hx.cols());
       
       for (int j=0; j<Hp.size();j++){ 
-        if(i==j) H.block<3,3>(3*j,3*Hp[i]) = I; }      
+        if(i==j) H.block<3,3>(3*j,3*Hp[i]) = -1*I; }      
       
       R.block<3,3>(3*i, 3*i) << z_cov_vec[i], 0,0,0,z_cov_vec[i],0,0,0, z_cov_vec[i];
 
@@ -243,7 +243,7 @@ namespace pekfslam
     y = z - hxs;  // y = z - H*xs innovation
 
     for (int j=0; j<Hp.size();j++){ 
-      H.block<3,3>(3*j,index-3) = -1*I; 
+      H.block<3,3>(3*j,index-3) = I; 
       y(3*j+2) = wrapAngle(y(3*j+2)); // wrap angle to [-pi, pi]
     }
 
@@ -261,13 +261,13 @@ namespace pekfslam
     // for(int i=0; i<Hp.size(); i++){  }
     
     X_ = K*y;
-    X.block(0,0,vec_size,0) = X.block(0,0,vec_size,0) + X_; // X = X + K*y;
+    X.block(0,0,vec_size,0) << X.block(0,0,vec_size,0) + X_; // X = X + K*y;
     ROS_INFO("X %f, %F, %F", X(index-3),  X(index-2), X(index-1));
   
   
 
     P_ = K*Z*K.transpose(); // P = P - K*Z*K';
-    P.block(0,0, vec_size, vec_size) = PP_ - P_; // update covariance 
+    P.block(0,0, vec_size, vec_size) << PP_ - P_; // update covariance 
     // update
 
   };
