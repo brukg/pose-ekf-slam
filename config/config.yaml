@@ -1,22 +1,24 @@
 output_frame: odom
 base_footprint_frame: base_footprint
-freq: 5.0
+freq: 20.0
 sensor_timeout: 1.0
-odom_used: true
-imu_used: false
-vo_used: true
 
 # ros topics
 odom_topic: /turtlebot/odom
-vo_topic: /turtlebot/icp/vo
 pc_topic: /turtlebot/converted_pc
 pose_topic: /pose_slam/pose
 poses_topic: /pose_slam/poses
 
-_time_between_cloud_points: 1
-dist_threshold: 0.1 #distance norm for updat includes angular change
+rplidar_scan: /turtlebot/rplidar/scan
+rplidar_pc: /turtlebot/converted_pc
+
+
+time_between_cloud_points: 1
+dist_threshold: 0.5 #distance norm for updat includes angular change
+
+
 # ICP parametrs
-time_between_cloud_points: 0.5 #minimum time to wait to capture consecetive cloud points 
+# time_between_cloud_points: 0.2 #minimum time to wait to capture consecetive cloud points 
 transformation_epsilon: 0.008 #minimum transformation difference for termination condition
 euclidean_fitness_epsilon: 0.01 #maximum allowed Euclidean error between two consecutive steps in the ICP loop
 max_correspondence_distance: 0.1 #correspondences with higher distances will be ignored >20cm 

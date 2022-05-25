@@ -78,7 +78,7 @@ private:
   bool new_scan_, is_pose_start, new_odom_;
   bool odom_initializing_, imu_initializing_, vo_initializing_;
   double timeout_;
-  double _time_between_cloud_points, _prev_time_stamp, dist_threshold_;
+  double _time_between_cloud_points, _prev_time_stamp, dist_threshold_, prev_dist;
 
   std::string output_frame_, base_footprint_frame_, tf_prefix_, odom_topic_, imu_topic_, pose_topic_, poses_topic_, pc_topic_;
 

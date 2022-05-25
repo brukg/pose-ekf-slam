@@ -10,6 +10,7 @@
 
 // msgs
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <pcl/registration/gicp.h> //generalized iterative closest point algorithm from pcl
 
 // log files

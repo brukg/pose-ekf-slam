@@ -35,27 +35,19 @@ void PEKFSLAM::decomposeTransform(const Eigen::Matrix4f& trans,
     pclXYZPtr target_cloud (new pcl::PointCloud<pcl::PointXYZ>(*target));
     pclXYZPtr source_cloud (new pcl::PointCloud<pcl::PointXYZ>(*source));
     pclXYZPtr transformed_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    // chrono::time_point<chrono::system_clock> start, end;
-    // chrono::duration<double> elapsed_seconds;
 
-    // start = chrono::system_clock::now(); 
     pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
     icp.setTransformationEpsilon(0.08);
-    icp.setMaximumIterations(20);
+    icp.setMaximumIterations(30);
     icp.setMaxCorrespondenceDistance(0.5);
     icp.setEuclideanFitnessEpsilon(0.001);
     icp.setInputSource(source_cloud);
     icp.setInputTarget(target_cloud);
-
-    // double diff_time = msg->header.stamp.toSec() - _prev_time_stamp; //calculating time btw the matching pointclouds
     icp.align(*transformed_cloud_ptr);
-    // end = chrono::system_clock::now();
+
+    // icp.align(*transformed_cloud_ptr);
     transform = icp.getFinalTransformation();
     fitness = icp.getFitnessScore();
-    // ROS_INFO("fitness %f", fitness);
-    // elapsed_seconds = end-start;
-    // cout<<"icp elapsed time: " << elapsed_seconds.count() << "s\n"; 
-
 
   };
 
@@ -70,17 +62,20 @@ void PEKFSLAM::decomposeTransform(const Eigen::Matrix4f& trans,
     cur_pose<<pose(0), pose(1);
     ROS_INFO("scan_size %ld", scans_vector.size());
     for (int i=0; i<scans_vector.size()-1; i++){
-      pose_to_check =X.block<2,1>(i*3, 0);
+      pose_to_check <<X.block<2,1>(i*3, 0);
       dis = pose_to_check - cur_pose;
-      if (dis.norm() < 1.5){
-        registerPointCloud(scans_vector[i], last_cloud,  t, fitness);
-        if (fitness < 0.005){
+      if (dis.norm() < 2.0){
+        registerPointCloud(last_cloud, scans_vector[i], t, fitness);
+
+        ROS_INFO("dis %f", dis.norm());
+        ROS_INFO("fitness %f", fitness);
+
+        if (fitness <= 0.001){
           ROS_INFO("pose_to_check %f %f", pose_to_check(0), pose_to_check(1));
-          ROS_INFO("dis %f", dis.norm());
-          ROS_INFO("fitness %f", fitness);
+          ROS_INFO("t %f %f ", t(0,3), t(1,3));
           Hp.push_back(i);
           trans.push_back(t);
-          fitnesses.push_back(pow(fitness, 2)); // used for R matrix
+          fitnesses.push_back(pow(fitness, 1)); // used for R matrix
         }
       }
     }

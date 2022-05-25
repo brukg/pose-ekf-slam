@@ -35,7 +35,6 @@ namespace pekfslam
 
 
     // ICP params from yaml file
-    private_nh.param("time_between_cloud_points", _time_between_cloud_points, 0.1);
     private_nh.param("transformation_epsilon", _transformation_epsilon, 0.01);
     private_nh.param("max_iterations", _max_iters, 75);
     private_nh.param("euclidean_fitness_epsilon", _euclidean_fitness_epsilon, 0.01);
@@ -58,7 +57,7 @@ namespace pekfslam
 
     // publish pose
     pose_pub_ = private_nh.advertise<geometry_msgs::PoseWithCovarianceStamped>(pose_topic_, 10); //currnt pose
-    poses_pub_ = private_nh.advertise<geometry_msgs::PoseArray>(poses_topic_, 10);// all poses
+    poses_pub_ = private_nh.advertise<nav_msgs::Odometry>(poses_topic_, 10);// all poses
 
     // initialize
     filter_stamp_ = Time::now();
@@ -70,7 +69,8 @@ namespace pekfslam
     odom_cov = Eigen::MatrixXd::Zero(3,3);
 
     new_scan_ = false; is_pose_start =  false; new_odom_ = false;
-    z_vec.reserve(100); z_cov_vec.reserve(100); Hp.reserve(100); 
+    z_vec.reserve(1000); z_cov_vec.reserve(1000); Hp.reserve(1000); 
+    prev_dist = 0.0;
   };
 
 
@@ -98,7 +98,7 @@ namespace pekfslam
     double roll, pitch, yaw;
     rot_1.getRPY(roll, pitch, yaw); //get the RPY angles from the quaternion
     new_meas << msg->pose.pose.position.x, msg->pose.pose.position.y, yaw; // set odom measurement
-    odom_cov.diagonal() << 5*msg->pose.covariance[0], 5*msg->pose.covariance[7],  2*msg->pose.covariance[35]; // set odom covariance
+    odom_cov.diagonal() << 0.01*msg->pose.covariance[0], 0.01*msg->pose.covariance[7],  0.001*msg->pose.covariance[35]; // set odom covariance
     if (!new_odom_){
       odom_meas = new_meas - odom_prev_pose;
 
@@ -117,12 +117,10 @@ namespace pekfslam
   void PEKFSLAMNode::cloudCallback(const PointCloud2Ptr& msg)
 {
     // add point cloud to the cloud_vector
-  if(msg->header.stamp.toSec()- _prev_time_stamp > _time_between_cloud_points && !new_scan_ && change_.norm()>dist_threshold_){//only add cloud points if the time between them is greater than the _time_between_cloud_points threshold
+  if(!is_pose_start || (msg->header.stamp.toSec()- _prev_time_stamp > _time_between_cloud_points && !new_scan_ && change_.norm()>dist_threshold_)){//only add cloud points if the time between them is greater than the _time_between_cloud_points threshold
     _prev_time_stamp = msg->header.stamp.toSec();
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr w_frame_cloud (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*msg, *cloud);
-    // pcl::transformPointCloud(*cloud, *w_frame_cloud, robot_pose);
 
     // map_vector.push_back(cloud);
     my_filter_.addScans(cloud);
@@ -145,8 +143,8 @@ namespace pekfslam
       // if(size<=1) 
       if (size>=2 && change_.norm()>dist_threshold_){
         // ROS_INFO("Update");
-        my_filter_.addNewPose(odom_meas, odom_cov);
         new_odom_ = false;
+        my_filter_.addNewPose(odom_meas, odom_cov);
 
         Hp.clear();
         z_vec.clear();
@@ -155,39 +153,47 @@ namespace pekfslam
         // ROS_INFO("HP");
         if (Hp.size()>0){
           my_filter_.update(z_vec, z_cov_vec, Hp);
-          change_.setZero();
+          change_.setZero(); //new pose added reset counter
+         
+        }
+
           my_filter_.getPoses(poses, covs);
-          geometry_msgs::PoseArray poses_msg;
-          geometry_msgs::Pose poses_;
+          // geometry_msgs::PoseArray poses_msg;
+          // nav_msgs::Odometry poses_msg;
+          // geometry_msgs::Pose poses_;
+          nav_msgs::Odometry poses_;
 
           for (int i=0; i<poses.rows(); i+=3){
             q.setRPY(0, 0, poses(i+2, 0));
-            poses_msg.header.stamp = ros::Time::now();
-            poses_msg.header.frame_id = "odom";
-            poses_.position.x = poses(i,0);
-            poses_.position.y = poses(i+1,1);
-            poses_.position.z = 0;
-            poses_.orientation.x = q.x();
-            poses_.orientation.y = q.y();
-            poses_.orientation.z = q.z();
-            poses_.orientation.w = q.w();
-            // poses_.pose.covariance[0] = covs(3*i,3*i);
-            // poses_.pose.covariance[7] = covs(3*i+1,3*i+1);
-            // poses_.pose.covariance[35] = covs(3*i+2,3*i+2);
-            poses_msg.poses.push_back(poses_);
+            poses_.header.stamp = ros::Time::now();
+            poses_.header.frame_id = "odom";
+            poses_.header.seq = i;
+            poses_.pose.pose.position.x = poses(i,0);
+            poses_.pose.pose.position.y = poses(i+1,1);
+            poses_.pose.pose.position.z = 0;
+            poses_.pose.pose.orientation.x = q.x();
+            poses_.pose.pose.orientation.y = q.y();
+            poses_.pose.pose.orientation.z = q.z();
+            poses_.pose.pose.orientation.w = q.w();
+            poses_.pose.covariance[0] = covs(i,i);
+            poses_.pose.covariance[7] = covs(i+1,i+1);
+            poses_.pose.covariance[35] = covs(i+2,i+2);
+            // poses_msg.poses.push_back(poses_);
+            poses_pub_.publish(poses_);
           }
-          poses_pub_.publish(poses_msg);
-        }
 
       }
     } else if(new_odom_ && !my_filter_.isInitialized()) { 
           ROS_INFO("Initialize"); 
           my_filter_.initialize(odom_meas, filter_stamp_);
           new_odom_ = false;
+          new_scan_ = false; //scann added reser for new scan
 
     }else if(new_odom_ && my_filter_.isInitialized()) { 
           my_filter_.predict(odom_meas, odom_cov);
           new_odom_ = false;
+          
+
 
     };
     change_+=odom_meas; 
