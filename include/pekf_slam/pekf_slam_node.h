@@ -59,7 +59,7 @@ private:
 
   ros::NodeHandle node_;
   ros::Timer timer_;
-  ros::Publisher pose_pub_, pc_pub_, poses_pub_;
+  ros::Publisher predicted_pose_pub_, updated_pose_pub_, pc_pub_, poses_pub_;
   ros::Subscriber odom_sub_, imu_sub_, vo_sub_, pc_sub_;
   ros::ServiceServer state_srv_;
 
@@ -78,9 +78,9 @@ private:
   bool new_scan_, is_pose_start, new_odom_;
   bool odom_initializing_, imu_initializing_, vo_initializing_;
   double timeout_;
-  double _time_between_cloud_points, _prev_time_stamp, dist_threshold_, prev_dist;
+  double _time_between_cloud_points, _noise, _prev_time_stamp, dist_threshold_, prev_dist;
 
-  std::string output_frame_, base_footprint_frame_, tf_prefix_, odom_topic_, imu_topic_, pose_topic_, poses_topic_, pc_topic_;
+  std::string output_frame_, base_footprint_frame_, tf_prefix_, odom_topic_, imu_topic_, predict_pose_topic_, update_pose_topic_, poses_topic_, pc_topic_;
 
 
 
@@ -92,12 +92,14 @@ private:
   int _max_iters; //max number of registration iterations
   double _euclidean_fitness_epsilon; //maximum allowed Euclidean error between two consecutive steps in the ICP loop
   double _max_correspondence_distance; //correspondences with higher distances will be ignored
-  
+  double _ransac_iterations, _ransac_threshold; //maximum number of RANSAC iterations and RANSAC inlier threshold
   Eigen::VectorXd odom_meas,odom_prev_pose, new_meas, change_;
+  Eigen::VectorXd pred_X;
+  Eigen::MatrixXd pred_P;
   Eigen::MatrixXd odom_cov;
   Eigen::Vector3d pose;
   Eigen::Matrix3d cov;
-  Eigen::VectorXd poses;
+  Eigen::VectorXd poses, dead_rec;
   Eigen::MatrixXd covs;
   std::vector<Eigen::Matrix4f> z_vec;
   std::vector<double> z_cov_vec;

@@ -13,10 +13,11 @@ namespace pekfslam
   // constructor
   PEKFSLAM::PEKFSLAM()
   {
-    X = Eigen::MatrixXd::Zero(3000,1); //to store 100 poses
-    P = Eigen::MatrixXd::Zero(3000,3000); //to store 100 covariance matrices
+    X.setZero(3000,1); //to store 1000 poses
+    P.setZero(3000,3000); //to store 1000 covariance matrices
     is_initialized = false; scans_vector.reserve(100);
     I = Eigen::Matrix3d::Identity(); //3x3 identity matrix
+    prior_X.setZero(3,1); prior_P.setZero(3,3);
   };
 
 
@@ -29,24 +30,14 @@ namespace pekfslam
   // initialize prior density of filter 
   void PEKFSLAM::initialize(const Eigen::VectorXd &new_meas, const ros::Time& time)
   {
-    // set prior of filter
-    Eigen::VectorXd prior_X(3,1); 
-    Eigen::MatrixXd prior_P(3,3); 
-    // initialize the covariance matrix(symetric 3x3 )
-    for (unsigned int i=0; i<3; i++) {
-      for (unsigned int j=0; j<3; j++){
-          if (i==j)  prior_P(i,j) = 0.000000001;
-          else prior_P(i,j) = 0;
-      }
-    }
-    // ROS_INFO("PP %f,", P(0,0));
-    X.block<3,1>(0,0) << new_meas;
-    // P = P + Q;
-    P.block(0,0,3,3) << prior_P;
-    
-    // ROS_INFO("PP %f,", P(0,0));
 
-    // odom_prev_pose = prior_X;
+    X.block<3,1>(0,0) << new_meas;
+    ROS_INFO("X %f, %f, %f ", X(0,0), X(1,0), X(2,0));
+
+    P.diagonal().head(3) << 1e-9, 1e-9, 1e-9;
+    ROS_INFO("P %f, %f, %f ", P(0,0), P(1,1), P(2,2));    
+    prior_X = X.block<3,1>(0,0);
+    prior_P = P.block<3,3>(0,0);
     
 
     // filter initialized
@@ -78,7 +69,7 @@ namespace pekfslam
   } 
 
   void PEKFSLAM::expected_hx(Eigen::VectorXd &xs, Eigen::VectorXd &xk, Eigen::VectorXd &hx){
-    hx = xs - xk; hx(2) = wrapAngle(hx(2));
+    hx = xk - xs; hx(2) = wrapAngle(hx(2));
 
   }
   void PEKFSLAM::observationMatrix(const pclXYZPtr& target, const pclXYZPtr& source, Eigen::Matrix4d &transform){
@@ -98,7 +89,8 @@ namespace pekfslam
     Pk = this->P.block<3,3>(index-3,index-3);
   }
   
-  void PEKFSLAM::predict(const Eigen::VectorXd &new_meas, const Eigen::MatrixXd &Q)
+  void PEKFSLAM::predict(const Eigen::VectorXd &new_meas, const Eigen::MatrixXd &Q,
+                          Eigen::VectorXd &pred_X, Eigen::MatrixXd &pred_P)
   {
     ROS_INFO("predict %d", index-3);
 
@@ -108,35 +100,20 @@ namespace pekfslam
 
     calculate_Jfx(new_meas, JFx);
     calculate_Jfw(new_meas, JFw);
-    // ROS_INFO("new_meas %f, %f, %f", new_meas(0), new_meas(1), new_meas(2));
-
     // odom_meas = new_meas - odom_prev_pose;  odom_meas(2) = wrapAngle(odom_meas(2));
     // ROS_INFO("Predic P %f,", P.sum());
     	  
     // ekf prediction
-    x = X.block<3,1>(index-3,0) + new_meas; 
-    x(2) = wrapAngle(x(2));
-    ROS_INFO("x predict  %f, %f, %f", x(0), x(1), x(2));
-
-    X.block<3,1>(index-3,0) = x;
+    prior_X << prior_X + new_meas;
+    pred_X = prior_X;
+    ROS_INFO("prior_X predict  %f, %f, %f", prior_X(0), prior_X(1), prior_X(2));
+    prior_X(2) = wrapAngle(prior_X(2));
     // ROS_INFO("X %f, %f, %f", X(index-3), X(index-2), X(index-1));
     // P = P + Q;
-    P.block<3,3>(index-3,index-3) = JFx*P.block<3,3>(index-3,index-3) *JFx.transpose() + JFw*Q*JFw.transpose();
-    if(index>3){
-
-      P_H = JFx*P.block(prev_index, 0, index, index);
-      
-      P.block(prev_index, 0, index, index) << P_H;
-      // P.block(index, 0, index+3, index) = P_H;
-
-      // ROS_INFO("PP %f, %ld, %ld", P.sum(), P.rows(), P.cols());
-      
-      P.block(0, prev_index, index, index) << P_H.transpose();
-    }
+    pred_P << JFx*prior_P *JFx.transpose() + JFw*Q*JFw.transpose();
+    prior_P << pred_P;
 
 
-    // ROS_INFO("PP %f,", P.sum());
-    // ROS_INFO("P %f, %f, %f", P(0,0), P(1,1), P(2,2));
 
   };
 
@@ -154,22 +131,16 @@ namespace pekfslam
     // meas(2) = wrapAngle(meas(2));
 
     // ekf prediction
-    x = X.block<3,1>(index-3,0) + new_meas; 
+    x = prior_X + new_meas; 
     x(2) = wrapAngle(x(2));
     X.block<3,1>(index,0) = x;
     ROS_INFO("X %f, %f, %f", X(index), X(index+1), X(index+2));
-    // ROS_INFO("P_ %f, %ld, %ld", P_(0,0), P_.rows(), P_.cols());
 
-    // select block Eigen from P using i th row and i th column
-    P_ = P.block<3,3>(prev_index,prev_index);
-    ROS_INFO("P_ %f, %ld, %ld", P_(0,0), P_.rows(), P_.cols());
-    // ROS_INFO("PP before 1  %f, %ld, %ld", P.sum(), P.rows(), P.cols());
     
-    P.block<3,3>(index,index) = JFx*P_ *JFx.transpose() + JFx*R*JFx.transpose();
+    P.block<3,3>(index,index) = JFx*prior_P *JFx.transpose() + JFx*R*JFx.transpose();
     // ROS_INFO("PP before 2  %f, %ld, %ld", P.sum(), P.rows(), P.cols());
 
     P_H = JFx*P.block(prev_index, 0, index, index);
-    // ROS_INFO("P_H %f, %ld, %ld", P_H.sum(), P_H.rows(), P_H.cols());
     
     P.block(index, 0, index+3, index) << P_H;
 
@@ -177,8 +148,9 @@ namespace pekfslam
     P.block(0, index, index, index+3) << P_H.transpose();
 
     // ROS_INFO("P %f, %f", P(0,0), P(index,index));
-    ROS_INFO("PP add %f, %ld, %ld", P.sum(), P.rows(), P.cols());
-    // odom_prev_pose = new_meas;
+    // ROS_INFO("PP add %f, %ld, %ld", P.sum(), P.rows(), P.cols());
+    prior_X << X.block<3,1>(index,0);
+    prior_P <<P.block<3,3>(index,index);
     index+=3;
 
   };
@@ -231,7 +203,7 @@ namespace pekfslam
       ROS_INFO("hx %f, %f, %f", hx(0), hx(1), hx(2));
       
       for (int j=0; j<Hp.size();j++){ 
-        if(i==j) H.block<3,3>(3*j,3*Hp[i]) << I; }      
+        if(i==j) H.block<3,3>(3*j,3*Hp[i]) << -1*I; }      
       
       R.block<3,3>(3*i, 3*i) << z_cov_vec[i], 0,0,0,z_cov_vec[i],0,0,0, 2*z_cov_vec[i];
 
@@ -240,7 +212,7 @@ namespace pekfslam
     y << z - hxs;  // y = z - H*xs innovation
 
     for (int j=0; j<Hp.size();j++){ 
-      H.block<3,3>(3*j,index-3) << -1*I; 
+      H.block<3,3>(3*j,index-3) << I; 
       y(3*j+2) = wrapAngle(y(3*j+2)); // wrap angle to [-pi, pi]
     }
 

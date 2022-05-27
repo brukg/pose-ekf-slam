@@ -4,22 +4,26 @@ freq: 20.0
 sensor_timeout: 1.0
 
 # ros topics
-odom_topic: /turtlebot/odom
+odom_topic: /turtlebot2/odom
 pc_topic: /turtlebot/converted_pc
-pose_topic: /pose_slam/pose
-poses_topic: /pose_slam/poses
+updated_pose_topic: /pose_slam/updated_pose
+predicted_pose_topic: /pose_slam/predicted_pose
+poses_topic: /pose_slam/pose
 
-rplidar_scan: /turtlebot/rplidar/scan
+rplidar_scan: /turtlebot2/rplidar/scan
 rplidar_pc: /turtlebot/converted_pc
 
 
-time_between_cloud_points: 1
+noise: 0.05
 dist_threshold: 0.5 #distance norm for updat includes angular change
 
 
 # ICP parametrs
-# time_between_cloud_points: 0.2 #minimum time to wait to capture consecetive cloud points 
-transformation_epsilon: 0.008 #minimum transformation difference for termination condition
+time_between_cloud_points: 0.2 #minimum time to wait to capture consecetive cloud points 
+transformation_epsilon: 0.001 #minimum transformation difference for termination condition
 euclidean_fitness_epsilon: 0.01 #maximum allowed Euclidean error between two consecutive steps in the ICP loop
-max_correspondence_distance: 0.1 #correspondences with higher distances will be ignored >20cm 
-max_iterations: 5 #max number of registration iterations
+max_correspondence_distance: 0.05 #correspondences with higher distances will be ignored 
+max_iterations: 500 #max number of registration iterations
+ransac_iterations: 50
+ransac_threshold: 0.1
+
