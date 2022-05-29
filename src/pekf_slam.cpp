@@ -72,7 +72,54 @@ namespace pekfslam
     hx = xk - xs; hx(2) = wrapAngle(hx(2));
 
   }
-  void PEKFSLAM::observationMatrix(const pclXYZPtr& target, const pclXYZPtr& source, Eigen::Matrix4d &transform){
+ 
+  void PEKFSLAM::observationMatrix(std::vector<Eigen::Matrix4f>& z_vec, std::vector<double>& z_cov_vec,  std::vector<int>& Hp,
+                                    Eigen::VectorXd &y, Eigen::MatrixXd &R, Eigen::MatrixXd &H){
+
+   
+    int vec_size = index; 
+    int hp_size = 3*Hp.size();
+    int num_scans = 3*scans_vector.size(), f, e; f = (num_scans-1)*3; e = (num_scans-2)*3;
+   
+   
+    Eigen::VectorXd z(hp_size,1), hxs(hp_size,1);  // z
+    Eigen::VectorXd xs(3,1),xk(3,1), hx(3,1); 
+    H.setZero(hp_size, vec_size); z.setZero(hp_size,1);
+    R.setZero(hp_size,hp_size); 
+    xs.setZero(); xk.setZero();
+    hx.setZero(); y.setZero(hp_size,1);
+    hxs.setZero(hp_size,1); y.setZero();
+
+    xk << X.block<3,1>(index-3, 0); //current pose
+    ROS_INFO("xk %f, %f, %f", xk(0), xk(1), xk(2));
+    for (int i=0; i<Hp.size();i++){
+      ROS_INFO("state_vector_size %d, matches %ld, id %d, mapsize %ld", vec_size, Hp.size(), Hp[i], scans_vector.size());
+
+      decomposeTransform(z_vec.at(i), z(3*i,0), z(3*i+1,0), z(3*i+2,0));
+
+      ROS_INFO("z %f, %f, %f", z(3*i), z(3*i+1), z(3*i+2));
+
+      xs << X.block<3,1>(3*Hp[i], 0); //pose of robot at the  matching scan
+      ROS_INFO("xs %f, %f, %f", xs(0), xs(1), xs(2));
+
+      expected_hx(xs, xk, hx);
+      hxs.block<3,1>(3*i,0) = hx;
+      ROS_INFO("hx %f, %f, %f", hx(0), hx(1), hx(2));
+      
+      for (int j=0; j<Hp.size();j++){ 
+        if(i==j) H.block<3,3>(3*j,3*Hp[i]) << -1*I; }      
+      
+      R.block<3,3>(3*i, 3*i) << z_cov_vec[i], 0,0,0,z_cov_vec[i],0,0,0, 2*z_cov_vec[i];
+
+      
+    }
+    y << z - hxs;  // y = z - x' innovation
+
+    for (int j=0; j<Hp.size();j++){ 
+      H.block<3,3>(3*j,index-3) << I; 
+      y(3*j+2) = wrapAngle(y(3*j+2)); // wrap angle to [-pi, pi]
+    }
+
 
   };
 
@@ -157,7 +204,7 @@ namespace pekfslam
 
 
   // update filter
-  void PEKFSLAM::update(std::vector<Eigen::Matrix4f>& z_vec, std::vector<double>& z_cov_vec,  std::vector<int>& Hp)
+  void PEKFSLAM::update(Eigen::VectorXd &y, Eigen::MatrixXd &R, Eigen::MatrixXd &H,  std::vector<int> &Hp)
   {
     //
     ROS_INFO("update %d", index);
@@ -166,79 +213,24 @@ namespace pekfslam
     int num_scans = 3*scans_vector.size(), f, e; f = (num_scans-1)*3; e = (num_scans-2)*3;
     // int index = 3*(scans_vector.size()-1);
 
-    Eigen::VectorXd z(hp_size,1), hxs(hp_size,1) ,y(hp_size,1), X_(vec_size,1);;  // z
-    // Eigen::MatrixXd z_cov(vec_size, vec_size); z_cov.setZero(); // R
-    Eigen::MatrixXd H(hp_size, vec_size);  // H
-    Eigen::MatrixXd R(hp_size,hp_size), Z(hp_size,hp_size),  Z_inv(hp_size,hp_size), E(hp_size,hp_size);  // R, Z, Z_inv, E=H*P*H'
+    Eigen::VectorXd X_(vec_size,1);;  // z
+    Eigen::MatrixXd Z(hp_size,hp_size),  Z_inv(hp_size,hp_size), E(hp_size,hp_size);  // R, Z, Z_inv, E=H*P*H'
     Eigen::MatrixXd K(vec_size, hp_size), PHt(vec_size,hp_size);       // K, P*H^T
-    Eigen::VectorXd xs(3,1),xk(3,1), hx(3,1); 
+    // Eigen::VectorXd xs(3,1),xk(3,1), hx(3,1); 
     Eigen::MatrixXd P_(vec_size, vec_size), PP_(vec_size, vec_size);
-
-
-
-    H.setZero(); z.setZero();
-    R.setZero(); Z.setZero();
-    K.setZero();  xs.setZero(); xk.setZero();
-    hx.setZero(); y.setZero();
-    hxs.setZero(); y.setZero(); X_.setZero();
-    PHt.setZero();  P_.setZero(); PP_.setZero(); E.setZero(); 
-
-    xk << X.block<3,1>(index-3, 0); //current pose
-    ROS_INFO("xk %f, %f, %f", xk(0), xk(1), xk(2));
+    Z.setZero(); K.setZero();  X_.setZero(); PHt.setZero();  P_.setZero(); PP_.setZero(); E.setZero(); 
     PP_ << P.block(0,0,vec_size,vec_size);
-
     X_.setZero();  
-    for (int i=0; i<Hp.size();i++){
-      ROS_INFO("state_vector_size %d, matches %ld, id %d, mapsize %ld", vec_size, Hp.size(), Hp[i], scans_vector.size());
-
-      decomposeTransform(z_vec.at(i), z(3*i,0), z(3*i+1,0), z(3*i+2,0));
-
-      ROS_INFO("z %f, %f, %f", z(3*i), z(3*i+1), z(3*i+2));
-      // z_cov(i*3,0) = z_cov(i);
-      xs << X.block<3,1>(3*Hp[i], 0); //pose of robot at the  matching scan
-      ROS_INFO("xs %f, %f, %f", xs(0), xs(1), xs(2));
-
-      expected_hx(xs, xk, hx);
-      hxs.block<3,1>(3*i,0) = hx;
-      ROS_INFO("hx %f, %f, %f", hx(0), hx(1), hx(2));
-      
-      for (int j=0; j<Hp.size();j++){ 
-        if(i==j) H.block<3,3>(3*j,3*Hp[i]) << -1*I; }      
-      
-      R.block<3,3>(3*i, 3*i) << z_cov_vec[i], 0,0,0,z_cov_vec[i],0,0,0, 2*z_cov_vec[i];
-
-      
-    }
-    y << z - hxs;  // y = z - H*xs innovation
-
-    for (int j=0; j<Hp.size();j++){ 
-      H.block<3,3>(3*j,index-3) << I; 
-      y(3*j+2) = wrapAngle(y(3*j+2)); // wrap angle to [-pi, pi]
-    }
-
     PHt << PP_*H.transpose();
-    
     E << H*PHt;
-    
     Z << E + R;
-    // ROS_INFO("Z %f, %ld, %ld", Z.sum(), Z.rows(), Z.cols());
-    
     Z_inv << Z.completeOrthogonalDecomposition().pseudoInverse();
-
     K << PHt* Z_inv;
-    
-    // for(int i=0; i<Hp.size(); i++){  }
-    
     X_ << K*y;
     X.block(0,0,vec_size,0) << X.block(0,0,vec_size,0) + X_; // X = X + K*y;
     ROS_INFO("X %f, %F, %F", X(index-3),  X(index-2), X(index-1));
-  
-  
-
     P_ << K*Z*K.transpose(); // P = P - K*Z*K';
     P.block(0,0, vec_size, vec_size) << PP_ - P_; // update covariance 
-    // update
-
   };
 
 

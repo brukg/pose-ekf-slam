@@ -162,9 +162,10 @@ namespace pekfslam
         z_cov_vec.clear();
         my_filter_.overLappingScans(new_meas, z_vec, z_cov_vec, Hp);
         // ROS_INFO("HP");
+        Eigen::VectorXd y; Eigen::MatrixXd R; Eigen::MatrixXd H;
         if (Hp.size()>0){
-          my_filter_.update(z_vec, z_cov_vec, Hp);
-          // my_filter_.getPose(pose, cov);
+          my_filter_.observationMatrix(z_vec, z_cov_vec, Hp, y, R, H);
+          my_filter_.update(y, R, H, Hp);
           my_filter_.getPoses(poses, covs);
           
           nav_msgs::Odometry poses_;
@@ -190,6 +191,25 @@ namespace pekfslam
          
         }
 
+        my_filter_.getPose(pose, cov);
+
+        geometry_msgs::PoseWithCovarianceStamped cur_pose;
+        q.setRPY(0, 0, pose(2));
+        cur_pose.header.stamp = ros::Time::now();
+        cur_pose.header.frame_id = "odom";
+        cur_pose.pose.pose.position.x = pose(0);
+        cur_pose.pose.pose.position.y = pose(1);
+        cur_pose.pose.pose.position.z = 0;
+        cur_pose.pose.pose.orientation.x = q.x();
+        cur_pose.pose.pose.orientation.y = q.y();
+        cur_pose.pose.pose.orientation.z = q.z();
+        cur_pose.pose.pose.orientation.w = q.w();
+        cur_pose.pose.covariance[0] = cov(0,0);
+        cur_pose.pose.covariance[7] = cov(1,1);
+        cur_pose.pose.covariance[35] = cov(2,2);
+        poses_pub_.publish(cur_pose);
+
+
           
 
 
@@ -204,8 +224,6 @@ namespace pekfslam
     }else if(new_odom_ && my_filter_.isInitialized()) { 
           my_filter_.predict(odom_meas, odom_cov,  pred_X, pred_P);
           new_odom_ = false;
-          
-
 
     };
 
@@ -229,23 +247,6 @@ namespace pekfslam
       pose_msg.pose.covariance[7] = pred_P(1,1);
       pose_msg.pose.covariance[35] = pred_P(2,2);
       predicted_pose_pub_.publish(pose_msg);
-
-
-      geometry_msgs::PoseWithCovarianceStamped cur_pose;
-      q.setRPY(0, 0, pred_X(2));
-      cur_pose.header.stamp = ros::Time::now();
-      cur_pose.header.frame_id = "odom";
-      cur_pose.pose.pose.position.x = pred_X(0);
-      cur_pose.pose.pose.position.y = pred_X(1);
-      cur_pose.pose.pose.position.z = 0;
-      cur_pose.pose.pose.orientation.x = q.x();
-      cur_pose.pose.pose.orientation.y = q.y();
-      cur_pose.pose.pose.orientation.z = q.z();
-      cur_pose.pose.pose.orientation.w = q.w();
-      cur_pose.pose.covariance[0] = pred_P(0,0);
-      cur_pose.pose.covariance[7] = pred_P(1,1);
-      cur_pose.pose.covariance[35] = pred_P(2,2);
-      poses_pub_.publish(cur_pose);
 
       
 

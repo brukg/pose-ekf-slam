@@ -45,15 +45,20 @@ public:
   virtual ~PEKFSLAMNode();
 
 private:
-  /// the mail filter loop that will be called periodically
+  /// the main localization loop that will be called periodically
   void start(const ros::TimerEvent& e);
 
-  /// callback function for odo data
+  /// callback function for odo data (Odometry)
   void odomCallback(const OdomConstPtr& msg);
 
-  /// callback function for imu data
+  /*
+  * callback function for imu data to be implemented
+  */
   // void imuCallback(const ImuConstPtr& imu);
 
+  /*
+    * @brief callback function for laser point cloud
+    */
   void cloudCallback(const PointCloud2Ptr& msg); //point cloud callback
 
 
