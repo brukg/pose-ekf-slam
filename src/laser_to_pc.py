@@ -5,7 +5,7 @@ from sensor_msgs.msg import PointCloud2, LaserScan
 import laser_geometry.laser_geometry as lg
 
 
-pc_pub = rospy.Publisher(rospy.get_param('/laser_to_pc/rplidar_pc'), PointCloud2, queue_size=10)
+pc_pub = rospy.Publisher(rospy.get_param('/laser_to_pc/pc_topic'), PointCloud2, queue_size=10)
 
 def scan_cb(msg):
     lp = lg.LaserProjection()

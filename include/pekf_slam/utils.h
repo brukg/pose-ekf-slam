@@ -13,6 +13,7 @@ int PEKFSLAM::getScansVectorSize()
 {
   return scans_vector.size();
 };
+
 void PEKFSLAM::addScans(const pclXYZPtr& scan)
 {
   scans_vector.push_back(scan);
@@ -117,7 +118,7 @@ void PEKFSLAM::composeTransform(const Eigen::Vector3d& t1,
           else if(0.05<=fitness<0.1)   fitnesses.push_back(pow(fitness,16)); // used for R matrix
           else if(0.01<=fitness<0.05)   fitnesses.push_back(pow(fitness,28)); // used for R matrix
           else if(0.001<=fitness<0.01)   fitnesses.push_back(pow(fitness,38)); // used for R matrix
-          else    fitnesses.push_back(pow(fitness,20)); // used for R matrix
+          else    fitnesses.push_back(pow(fitness,48)); // used for R matrix
         }
       }
     }

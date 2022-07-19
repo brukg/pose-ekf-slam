@@ -30,9 +30,6 @@ namespace pekfslam
 
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 typedef boost::shared_ptr<sensor_msgs::Imu const> ImuConstPtr;
-typedef boost::shared_ptr<nav_msgs::Odometry const> VoConstPtr;
-typedef boost::shared_ptr<nav_msgs::Odometry const> GpsConstPtr;
-typedef boost::shared_ptr<geometry_msgs::Twist const> VelConstPtr;
 // typedef boost::shared_ptr<sensor_msgs::PointCloud2 const> PointCloud2Ptr;
 // typedef pcl::PointCloud<pcl::PointXYZ>::Ptr pclXYZPtr;
 class PEKFSLAMNode
@@ -54,7 +51,7 @@ private:
   /*
   * callback function for imu data to be implemented
   */
-  // void imuCallback(const ImuConstPtr& imu);
+  void imuCallback(const ImuConstPtr& imu);
 
   /*
     * @brief callback function for laser point cloud
@@ -82,6 +79,7 @@ private:
 
   bool new_scan_, is_pose_start, new_odom_;
   bool odom_initializing_, imu_initializing_, vo_initializing_;
+  double imu_yaw;
   double timeout_;
   double _time_between_cloud_points, _noise, _prev_time_stamp, dist_threshold_, prev_dist;
 

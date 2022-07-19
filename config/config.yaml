@@ -5,13 +5,13 @@ sensor_timeout: 1.0
 
 # ros topics
 odom_topic: /turtlebot/odom
+imu_topic: /turtlebot/mobile_base/sensors/imu_data
 pc_topic: /turtlebot/converted_pc
 updated_pose_topic: /pose_slam/updated_pose
 predicted_pose_topic: /pose_slam/predicted_pose
 poses_topic: /pose_slam/pose
 
 rplidar_scan: /turtlebot/rplidar/scan
-rplidar_pc: /turtlebot/converted_pc
 
 
 noise: 0.01

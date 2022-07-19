@@ -1,7 +1,6 @@
 #include <pekf_slam/pekf_slam_node.h>
 
 
-// using namespace MatrixWrapper;
 using namespace std;
 using namespace ros;
 using namespace tf;
@@ -22,9 +21,6 @@ namespace pekfslam
     private_nh.param("output_frame", output_frame_, std::string("odom"));
     private_nh.param("base_footprint_frame", base_footprint_frame_, std::string("base_footprint"));
     private_nh.param("sensor_timeout", timeout_, 1.0);
-    // private_nh.param("odom_used", odom_used_, true);
-    // private_nh.param("imu_used",  imu_used_, true);
-    // private_nh.param("vo_used",   vo_used_, true);
     private_nh.param("odom_topic", odom_topic_, std::string("/odom"));
     private_nh.param("imu_topic",  imu_topic_, std::string("/imu"));
     private_nh.param("pc_topic",   pc_topic_, std::string("/camera/depth/points"));
@@ -46,15 +42,9 @@ namespace pekfslam
     double freq;
     private_nh.param("freq", freq, 30.0);
 
-    // tf_prefix_ = tf::getPrefixParam(private_nh);
-    // output_frame_ = tf::resolve(tf_prefix_, output_frame_);
-    // base_footprint_frame_ = tf::resolve(tf_prefix_, base_footprint_frame_);
-
-
-    // my_filter_.setOutputFrame(output_frame_);
-    // my_filter_.setBaseFootprintFrame(base_footprint_frame_);
 
     odom_sub_ = nh.subscribe(odom_topic_, 10, &PEKFSLAMNode::odomCallback, this);
+    imu_sub_ = nh.subscribe(imu_topic_, 10, &PEKFSLAMNode::imuCallback, this);
     pc_sub_ = nh.subscribe(pc_topic_, 10, &PEKFSLAMNode::cloudCallback, this);
 
     timer_ = private_nh.createTimer(ros::Duration(1.0/max(freq,1.0)), &PEKFSLAMNode::start, this);
@@ -89,23 +79,28 @@ namespace pekfslam
 
   };
 
+  void PEKFSLAMNode::imuCallback(const ImuConstPtr& msg)
+  {
+    // get roll pitch and yaw from quaternion
+    tf2::Quaternion q(msg->orientation.x, 
+                      msg->orientation.y, 
+                      msg->orientation.z, 
+                      msg->orientation.w); // quaternion
+    
+    tf2::Matrix3x3 rot_1(q); // rotation matrix
 
+    double roll, pitch;
+    rot_1.getRPY(roll, pitch, imu_yaw); //get the RPY angles from the quaternion
+    
+
+  }
 
 
 
   // callback function for odom data
   void PEKFSLAMNode::odomCallback(const OdomConstPtr& msg)
   { 
-    // get roll pitch and yaw from quaternion
-    tf2::Quaternion q(msg->pose.pose.orientation.x, 
-                      msg->pose.pose.orientation.y, 
-                      msg->pose.pose.orientation.z, 
-                      msg->pose.pose.orientation.w); // quaternion
-    tf2::Matrix3x3 rot_1(q); // rotation matrix
-
-    double roll, pitch, yaw;
-    rot_1.getRPY(roll, pitch, yaw); //get the RPY angles from the quaternion
-    new_meas << msg->pose.pose.position.x, msg->pose.pose.position.y, yaw; // set odom measurement
+    new_meas << msg->pose.pose.position.x, msg->pose.pose.position.y, imu_yaw; // set odom measurement
     odom_cov.diagonal() << 0.5*msg->pose.covariance[0], 0.5*msg->pose.covariance[7],  0.5*msg->pose.covariance[35]; // set odom covariance
     if (!new_odom_){
       odom_meas = new_meas - odom_prev_pose + (_noise*Eigen::VectorXd::Random(3, 1));
@@ -131,7 +126,7 @@ namespace pekfslam
     pcl::fromROSMsg(*msg, *cloud);
     ROS_INFO("new scan at  %f %f %f", new_meas(0), new_meas(1), new_meas(2));
 
-    // map_vector.push_back(cloud);
+
     my_filter_.addScans(cloud);
     new_scan_ = true;
 
@@ -208,10 +203,6 @@ namespace pekfslam
         cur_pose.pose.covariance[7] = cov(1,1);
         cur_pose.pose.covariance[35] = cov(2,2);
         poses_pub_.publish(cur_pose);
-
-
-          
-
 
       }
     } else if(new_odom_ && new_scan_ && !my_filter_.isInitialized()) { 

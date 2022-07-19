@@ -59,12 +59,12 @@ namespace pekfslam
   }
 
   void PEKFSLAM::calculate_Jhx(const Eigen::VectorXd &new_meas, Eigen::MatrixXd &Jhx){
-    // set JFw to 3x3 identity matrix
+    // set Jhx to 3x3 identity matrix
     Jhx = I;
   }  
 
   void PEKFSLAM::calculate_Jhv(const Eigen::VectorXd &new_meas, Eigen::MatrixXd &Jhv){
-    // set JFw to 3x3 identity matrix
+    // set JFv to 3x3 identity matrix
     Jhv = I;
   } 
 
@@ -216,7 +216,7 @@ namespace pekfslam
     Eigen::VectorXd X_(vec_size,1);;  // z
     Eigen::MatrixXd Z(hp_size,hp_size),  Z_inv(hp_size,hp_size), E(hp_size,hp_size);  // R, Z, Z_inv, E=H*P*H'
     Eigen::MatrixXd K(vec_size, hp_size), PHt(vec_size,hp_size);       // K, P*H^T
-    // Eigen::VectorXd xs(3,1),xk(3,1), hx(3,1); 
+
     Eigen::MatrixXd P_(vec_size, vec_size), PP_(vec_size, vec_size);
     Z.setZero(); K.setZero();  X_.setZero(); PHt.setZero();  P_.setZero(); PP_.setZero(); E.setZero(); 
     PP_ << P.block(0,0,vec_size,vec_size);
