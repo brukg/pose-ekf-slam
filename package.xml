@@ -2,10 +2,10 @@
     <name>pekf_slam</name>
     <version>1.0.0</version>
     <description>
-        pose slam
+        pose ekf slam
     </description>
-    <author>Wim Meeussen</author>
-    <maintainer email="user@todo.todo">maintainer</maintainer>
+    <author>Bruk Gebregziabher</author>
+    <maintainer email="brukg07@gmail.com">maintainer</maintainer>
     <license>BSD</license>
     <url>#</url>
 
