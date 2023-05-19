@@ -219,7 +219,9 @@ namespace pekfslam
 
     Eigen::MatrixXd P_(vec_size, vec_size), PP_(vec_size, vec_size);
     Z.setZero(); K.setZero();  X_.setZero(); PHt.setZero();  P_.setZero(); PP_.setZero(); E.setZero(); 
+
     PP_ << P.block(0,0,vec_size,vec_size);
+    
     X_.setZero();  
     PHt << PP_*H.transpose();
     E << H*PHt;
