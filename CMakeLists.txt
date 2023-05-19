@@ -1,53 +1,26 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.8)
 project(pekf_slam)
 
-find_package(PkgConfig)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
+# find dependencies
+find_package(ament_cmake REQUIRED)
+# uncomment the following section in order to fill in
+# further dependencies manually.
+# find_package(<dependency> REQUIRED)
 
-find_package(catkin REQUIRED
-        COMPONENTS
-            roscpp
-            tf2
-            tf
-            nav_msgs
-            std_msgs
-            geometry_msgs
-            sensor_msgs
-            message_generation
-            pcl_conversions
-            pcl_ros
-        )
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # comment the line when a copyright and license is added to all source files
+  set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # comment the line when this package is in a git repo and when
+  # a copyright and license is added to all source files
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
-find_package(Boost REQUIRED COMPONENTS thread)
-find_package(PCL REQUIRED)
-
-generate_messages(
-    DEPENDENCIES
-        std_msgs
-)
-
-catkin_package(
-    CATKIN_DEPENDS
-        geometry_msgs
-        message_runtime
-        nav_msgs
-        roscpp
-        sensor_msgs
-        std_msgs
-)
-
-include_directories(
-    "include"
-    ${catkin_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
-    )
-
-add_executable(pekf_slam 
-                       src/pekf_slam.cpp 
-                       src/pekf_slam_node.cpp)
-target_link_libraries(pekf_slam
-    ${catkin_LIBRARIES}
-    ${Boost_LIBRARIES}
-    )
-add_dependencies(pekf_slam ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
+ament_package()

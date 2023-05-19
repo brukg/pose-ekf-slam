@@ -1,33 +1,18 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-    <name>pekf_slam</name>
-    <version>1.0.0</version>
-    <description>
-        pose ekf slam
-    </description>
-    <author>Bruk Gebregziabher</author>
-    <maintainer email="brukg07@gmail.com">maintainer</maintainer>
-    <license>BSD</license>
-    <url>#</url>
+  <name>pekf_slam</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="root@todo.todo">root</maintainer>
+  <license>TODO: License declaration</license>
 
-    <buildtool_depend version_gte="0.5.68">catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-    <build_depend>message_generation</build_depend>
-    <build_depend>roscpp</build_depend>
-    <build_depend>std_msgs</build_depend>
-    <build_depend>geometry_msgs</build_depend>
-    <build_depend>sensor_msgs</build_depend>
-    <build_depend>nav_msgs</build_depend>
-    <build_depend>tf</build_depend>
-    <build_depend>message_generation</build_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
-    <exec_depend>message_runtime</exec_depend>
-    <exec_depend>roscpp</exec_depend>
-    <exec_depend>std_msgs</exec_depend>
-    <exec_depend>geometry_msgs</exec_depend>
-    <exec_depend>sensor_msgs</exec_depend>
-    <exec_depend>nav_msgs</exec_depend>
-    <exec_depend>tf</exec_depend>
-
-    <test_depend>rosbag</test_depend>
-    <test_depend>rostest</test_depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>
