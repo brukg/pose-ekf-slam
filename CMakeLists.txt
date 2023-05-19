@@ -7,6 +7,16 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(PCL 1.10 REQUIRED)
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -22,5 +32,57 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+include_directories(
+  include
+  ${PCL_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
+)
+
+link_libraries(
+  ${PCL_LIBRARIES}
+  ${EIGEN3_LIBRARIES}
+)
+add_definitions(${PCL_DEFINITIONS})
+
+add_executable(pekf_slam 
+  src/pekf_slam_node.cpp 
+  src/pekf_slam.cpp
+)
+
+ament_target_dependencies(pekf_slam
+  rclcpp
+  tf2
+  tf2_ros
+  nav_msgs
+  std_msgs
+  geometry_msgs
+  sensor_msgs
+  pcl_conversions
+  PCL
+)
+
+target_link_directories(pekf_slam PUBLIC
+  ${PCL_LIBRARY_DIRS}
+  ${EIGEN3_LIBRARY_DIRS}
+)
+
+install(TARGETS
+  pekf_slam
+  DESTINATION lib/${PROJECT_NAME})
+
+install(PROGRAMS
+    scripts/scan2pc.py
+  DESTINATION 
+    lib/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY 
+    launch
+    params
+  DESTINATION 
+    share/${PROJECT_NAME}
+)
 
 ament_package()

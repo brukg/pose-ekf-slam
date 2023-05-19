@@ -1,5 +1,5 @@
-#include <pekf_slam/pekf_slam.h>
-#include <pekf_slam/utils.h>
+#include <pekf_slam/pekf_slam.hpp>
+#include <pekf_slam/utils.hpp>
 
 // using namespace MatrixWrapper;
 // using namespace BFL;
@@ -28,16 +28,16 @@ namespace pekfslam
 
 
   // initialize prior density of filter 
-  void PEKFSLAM::initialize(const Eigen::VectorXd &new_meas, const ros::Time& time)
+  void PEKFSLAM::initialize(const Eigen::VectorXd &new_meas)
   {
 
     X.block<3,1>(0,0) << new_meas;
-    ROS_INFO("X %f, %f, %f ", X(0,0), X(1,0), X(2,0));
+    // // RCLCPP_INFO("X %f, %f, %f ", X(0,0), X(1,0), X(2,0));
 
     P.diagonal().head(3) << 1e-9, 1e-9, 1e-9;
-    ROS_INFO("P %f, %f, %f ", P(0,0), P(1,1), P(2,2));    
-    prior_X = X.block<3,1>(0,0);
-    prior_P = P.block<3,3>(0,0);
+    // // RCLCPP_INFO("P %f, %f, %f ", P(0,0), P(1,1), P(2,2));    
+    prior_X = X.block(0,0,3,1);
+    prior_P = P.block(0,0,3,3);
     
 
     // filter initialized
@@ -91,20 +91,20 @@ namespace pekfslam
     hxs.setZero(hp_size,1); y.setZero();
 
     xk << X.block<3,1>(index-3, 0); //current pose
-    ROS_INFO("xk %f, %f, %f", xk(0), xk(1), xk(2));
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "xk %f, %f, %f", xk(0), xk(1), xk(2));
     for (int i=0; i<Hp.size();i++){
-      ROS_INFO("state_vector_size %d, matches %ld, id %d, mapsize %ld", vec_size, Hp.size(), Hp[i], scans_vector.size());
+      RCLCPP_INFO(rclcpp::get_logger("pekf"), "state_vector_size %d, matches %ld, id %d, mapsize %ld", vec_size, Hp.size(), Hp[i], scans_vector.size());
 
       decomposeTransform(z_vec.at(i), z(3*i,0), z(3*i+1,0), z(3*i+2,0));
 
-      ROS_INFO("z %f, %f, %f", z(3*i), z(3*i+1), z(3*i+2));
+      RCLCPP_INFO(rclcpp::get_logger("pekf"), "z %f, %f, %f", z(3*i), z(3*i+1), z(3*i+2));
 
       xs << X.block<3,1>(3*Hp[i], 0); //pose of robot at the  matching scan
-      ROS_INFO("xs %f, %f, %f", xs(0), xs(1), xs(2));
+      RCLCPP_INFO(rclcpp::get_logger("pekf"), "xs %f, %f, %f", xs(0), xs(1), xs(2));
 
       expected_hx(xs, xk, hx);
       hxs.block<3,1>(3*i,0) = hx;
-      ROS_INFO("hx %f, %f, %f", hx(0), hx(1), hx(2));
+      RCLCPP_INFO(rclcpp::get_logger("pekf"), "hx %f, %f, %f", hx(0), hx(1), hx(2));
       
       for (int j=0; j<Hp.size();j++){ 
         if(i==j) H.block<3,3>(3*j,3*Hp[i]) << -1*I; }      
@@ -128,18 +128,21 @@ namespace pekfslam
 
     Xks = this->X.block(0,0,index,1);
     Pks = this->P.block(0,0,index,index);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "Xks %ld, %ld", Xks.rows(), Xks.cols());
   }
 
   void PEKFSLAM::getPose(Eigen::Vector3d &Xk, Eigen::Matrix3d &Pk){
     // int i = scans_vector.size();
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "Xk" );
     Xk = this->X.block<3,1>(index-3, 0);
     Pk = this->P.block<3,3>(index-3,index-3);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "Xk %f, %f, %f", Xk(0), Xk(1), Xk(2));
   }
   
   void PEKFSLAM::predict(const Eigen::VectorXd &new_meas, const Eigen::MatrixXd &Q,
                           Eigen::VectorXd &pred_X, Eigen::MatrixXd &pred_P)
   {
-    ROS_INFO("predict %d", index-3);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "predict %d", index-3);
 
     int prev_index = index-3, end = index+3;
     // Eigen::VectorXd odom_meas(3);
@@ -148,14 +151,14 @@ namespace pekfslam
     calculate_Jfx(new_meas, JFx);
     calculate_Jfw(new_meas, JFw);
     // odom_meas = new_meas - odom_prev_pose;  odom_meas(2) = wrapAngle(odom_meas(2));
-    // ROS_INFO("Predic P %f,", P.sum());
+    // // RCLCPP_INFO("Predic P %f,", P.sum());
     	  
     // ekf prediction
     prior_X << prior_X + new_meas;
     pred_X = prior_X;
-    ROS_INFO("prior_X predict  %f, %f, %f", prior_X(0), prior_X(1), prior_X(2));
+    // // RCLCPP_INFO("prior_X predict  %f, %f, %f", prior_X(0), prior_X(1), prior_X(2));
     prior_X(2) = wrapAngle(prior_X(2));
-    // ROS_INFO("X %f, %f, %f", X(index-3), X(index-2), X(index-1));
+    // // RCLCPP_INFO("X %f, %f, %f", X(index-3), X(index-2), X(index-1));
     // P = P + Q;
     pred_P << JFx*prior_P *JFx.transpose() + JFw*Q*JFw.transpose();
     prior_P << pred_P;
@@ -167,9 +170,9 @@ namespace pekfslam
   void PEKFSLAM::addNewPose(const Eigen::VectorXd &new_meas, const Eigen::MatrixXd &R)
   { 
 
-    ROS_INFO("newpose %d", index);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "newpose %d", index);
 	  Eigen::VectorXd meas(3);
-    int prev_index = index-3, end = index+3;
+    int prev_index = index-3, end = index+3, size = 3;
 
     Eigen::MatrixXd JFx(3,3), P_(3,3), P_H(3,index);
     P_H.setZero(); P_.setZero(); JFx.setZero();
@@ -181,23 +184,27 @@ namespace pekfslam
     x = prior_X + new_meas; 
     x(2) = wrapAngle(x(2));
     X.block<3,1>(index,0) = x;
-    ROS_INFO("X %f, %f, %f", X(index), X(index+1), X(index+2));
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "X %f, %f, %f", X(index), X(index+1), X(index+2));
 
     
     P.block<3,3>(index,index) = JFx*prior_P *JFx.transpose() + JFx*R*JFx.transpose();
-    // ROS_INFO("PP before 2  %f, %ld, %ld", P.sum(), P.rows(), P.cols());
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "PP before 2  %f, %ld, %ld", P.sum(), P.rows(), P.cols());
 
-    P_H = JFx*P.block(prev_index, 0, index, index);
+    P_H = JFx*P.block(prev_index, 0, size, size);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "index end %d, %d", index, end);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "P_H %ld, %ld", P_H.rows(), P_H.cols());
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "block %ld, %ld", P.block(index, 0, size, size).rows(), P.block(index, 0, size, size).cols());
+    P.block(index, 0, size, size) = P_H;
+
     
-    P.block(index, 0, index+3, index) << P_H;
+    P.block(0, index, size, size) = P_H.transpose();
 
-    
-    P.block(0, index, index, index+3) << P_H.transpose();
-
-    // ROS_INFO("P %f, %f", P(0,0), P(index,index));
-    // ROS_INFO("PP add %f, %ld, %ld", P.sum(), P.rows(), P.cols());
-    prior_X << X.block<3,1>(index,0);
-    prior_P <<P.block<3,3>(index,index);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "P %f, %f", P(0,0), P(index,index));
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "PP add %f, %ld, %ld", P.sum(), P.rows(), P.cols());
+    prior_X << X.block(index,0, size, 1);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "prior_X %f, %f, %f", prior_X(0), prior_X(1), prior_X(2));
+    prior_P <<P.block(index,index, size, size);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "prior_P %d, %d", prior_P.rows(), prior_P.cols());
     index+=3;
 
   };
@@ -207,7 +214,7 @@ namespace pekfslam
   void PEKFSLAM::update(Eigen::VectorXd &y, Eigen::MatrixXd &R, Eigen::MatrixXd &H,  std::vector<int> &Hp)
   {
     //
-    ROS_INFO("update %d", index);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "update %d", index);
     int vec_size = index; 
     int hp_size = 3*Hp.size();
     int num_scans = 3*scans_vector.size(), f, e; f = (num_scans-1)*3; e = (num_scans-2)*3;
@@ -219,16 +226,22 @@ namespace pekfslam
 
     Eigen::MatrixXd P_(vec_size, vec_size), PP_(vec_size, vec_size);
     Z.setZero(); K.setZero();  X_.setZero(); PHt.setZero();  P_.setZero(); PP_.setZero(); E.setZero(); 
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "X %f, %f, %f", X(index-3),  X(index-2), X(index-1));
     PP_ << P.block(0,0,vec_size,vec_size);
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "PP %ld, %ld", PP_.rows(), PP_.cols());
     X_.setZero();  
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "X_ %ld, %ld", H.rows(), H.cols());
     PHt << PP_*H.transpose();
     E << H*PHt;
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "E %ld, %ld", E.rows(), E.cols());
     Z << E + R;
     Z_inv << Z.completeOrthogonalDecomposition().pseudoInverse();
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "Z %ld, %ld", Z.rows(), Z.cols());
     K << PHt* Z_inv;
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "K %ld, %ld", K.rows(), K.cols());
     X_ << K*y;
-    X.block(0,0,vec_size,0) << X.block(0,0,vec_size,0) + X_; // X = X + K*y;
-    ROS_INFO("X %f, %F, %F", X(index-3),  X(index-2), X(index-1));
+    X.block(0,0,vec_size,1) << X.block(0,0,vec_size,1) + X_; // X = X + K*y;
+    RCLCPP_INFO(rclcpp::get_logger("pekf"), "X %f, %F, %F", X(index-3),  X(index-2), X(index-1));
     P_ << K*Z*K.transpose(); // P = P - K*Z*K';
     P.block(0,0, vec_size, vec_size) << PP_ - P_; // update covariance 
   };

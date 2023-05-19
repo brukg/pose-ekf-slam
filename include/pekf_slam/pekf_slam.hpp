@@ -1,25 +1,24 @@
 #ifndef PEKFSLAM_H
 #define PEKFSLAM_H
 
-#include <pcl_conversions/pcl_conversions.h>
+// #include <pcl_conversions/pcl_conversions.hpp>
 #include <eigen3/Eigen/Dense>
 
 // TF
-#include <tf/tf.h>
+// #include <tf/tf.hpp>
 #include <tf2/LinearMath/Transform.h>
 
 // msgs
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <pcl/registration/gicp.h> //generalized iterative closest point algorithm from pcl
 #include <pcl/registration/icp.h> //generalized iterative closest point algorithm from pcl
 
 // log files
 #include <fstream>
 #include <math.h>
+#include <rclcpp/rclcpp.hpp>
 
-typedef pcl::PointCloud<pcl::PointXYZ>::Ptr pclXYZPtr;
-typedef boost::shared_ptr<sensor_msgs::PointCloud2 const> PointCloud2Ptr;
 namespace pekfslam
 {
 
@@ -35,7 +34,7 @@ public:
 
 
 
-  void initialize(const Eigen::VectorXd &new_meas, const ros::Time& time);
+  void initialize(const Eigen::VectorXd &new_meas);
 
   bool isInitialized() {return is_initialized;};
   void predict(const Eigen::VectorXd &dis_pose, const Eigen::MatrixXd &Q,  
@@ -49,12 +48,12 @@ public:
   void calculate_Jhv(const Eigen::VectorXd &new_meas, Eigen::MatrixXd &Jhv);
   void expected_hx(Eigen::VectorXd &xs, Eigen::VectorXd &xk, Eigen::VectorXd &hx);
 
-  void addScans(const pclXYZPtr& scan);
+  void addScans(const pcl::PointCloud<pcl::PointXYZ>::Ptr& scan);
   void overLappingScans(const Eigen::VectorXd& pose, std::vector<Eigen::Matrix4f>& trans, std::vector<double>& fitnesses, std::vector<int>& Hp);
-  void registerPointCloud(Eigen::Matrix4f &initial, const pclXYZPtr& target, const pclXYZPtr& source, Eigen::Matrix4f &transform, double& fitness);
+  void registerPointCloud(Eigen::Matrix4f &initial, const pcl::PointCloud<pcl::PointXYZ>::Ptr& target, const pcl::PointCloud<pcl::PointXYZ>::Ptr& source, Eigen::Matrix4f &transform, double& fitness);
   void setICPParams(double &_max_correspondence_distance, double &_transformation_epsilon, 
                             int &_max_iteration, double &_euclidean_fitness_epsilon, 
-                            double &_ransac_iterations, double &_ransac_outlier_rejection_threshold);
+                            int &_ransac_iterations, double &_ransac_outlier_rejection_threshold);
 
   void observationMatrix(std::vector<Eigen::Matrix4f>& z_vec, std::vector<double>& z_cov_vec,  std::vector<int>& Hp,
                           Eigen::VectorXd &y, Eigen::MatrixXd &R, Eigen::MatrixXd &H);
@@ -96,15 +95,13 @@ private:
   Eigen::VectorXd prior_X;
   Eigen::MatrixXd prior_P;
 
-  std::vector<pclXYZPtr> scans_vector;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> scans_vector;
   int index;
 
-  ros::Time filter_time_old_;
   bool is_initialized, odom_initialized_, imu_initialized_, vo_initialized_;
   double max_correspondence_distance, transformation_epsilon, euclidean_fitness_epsilon, ransac_iterations, ransac_outlier_rejection_threshold;
   int max_iteration;
-  // tf transformer
-  tf::Transformer transformer_;
+  
 
   std::string output_frame_;
   std::string base_footprint_frame_;
